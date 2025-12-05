@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, send_file, redirect, url_for,
 
 # ==== CONFIG ====
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_XLSX = os.path.join(BASE_DIR, "FORMATTED TEMPLATE.xlsx")  # <-- new name
+TEMPLATE_XLSX = os.path.join(BASE_DIR, "FORMATTED TEMPLATE.xlsx")  # <-- UPDATED NAME
 SHEET_NAME = None
 
 START_ROW = 2  # first row of data (row 1 = header)
@@ -108,7 +108,7 @@ def parse_date_value(v):
         return None
     try:
         return datetime.strptime(s, "%Y-%m-%d").date()
-    except Exception:
+    except:
         return None
 
 
@@ -130,16 +130,8 @@ def process_csv_to_excel(csv_path, output_path):
     max_template_row = ws.max_row
     max_template_col = ws.max_column
 
-    # --- Limit how many rows we touch to avoid timeouts/OOM ---
-    # We only need rows: data + totals + a small buffer
-    max_row_needed = START_ROW + max(n_rows, 1) + 5  # 5 extra rows buffer
-    max_row_to_use = min(max_template_row, max_row_needed)
-
-    # Pre-create an "empty" border to reuse
-    empty_border = Border()
-
-    # Fill rows (only up to max_row_to_use)
-    for i in range(max_row_to_use - START_ROW + 1):
+    # Fill rows
+    for i in range(max_template_row - START_ROW + 1):
         excel_row = START_ROW + i
 
         if i < n_rows:
@@ -173,7 +165,7 @@ def process_csv_to_excel(csv_path, output_path):
                 ws.cell(row=excel_row, column=col_idx).value = to_decimal_hours(r[field])
 
         else:
-            # Clear unused rows within the used range
+            # Clear unused rows
             for col_idx in (
                 COL_DATE, COL_DEP, COL_DEP_TIME, COL_ARR, COL_ARR_TIME,
                 COL_AC_TYPE, COL_REG, COL_STUDENT, COL_INSTR,
@@ -183,9 +175,9 @@ def process_csv_to_excel(csv_path, output_path):
             ):
                 ws.cell(row=excel_row, column=col_idx).value = None
 
-    # Find last data row (within used range)
+    # Find last data row
     last_data_row = 0
-    for r in range(START_ROW, max_row_to_use + 1):
+    for r in range(START_ROW, ws.max_row + 1):
         if ws.cell(row=r, column=COL_DATE).value not in (None, ""):
             last_data_row = r
 
@@ -193,10 +185,8 @@ def process_csv_to_excel(csv_path, output_path):
         last_data_row = START_ROW
 
     total_row = last_data_row + 1
-    if total_row > max_row_to_use:
-        total_row = max_row_to_use
 
-    # FILTER ONLY DATA ROWS (totals row excluded)
+    # FILTER ONLY DATA ROWS (totals row excluded!)
     if ws.auto_filter:
         ws.auto_filter.ref = f"A1:AF{last_data_row}"
 
@@ -207,12 +197,12 @@ def process_csv_to_excel(csv_path, output_path):
             f"=SUM({col_letter}{START_ROW}:{col_letter}{last_data_row})"
         )
 
-    # Clear rows after totals, but ONLY up to max_row_to_use
-    for r in range(total_row + 1, max_row_to_use + 1):
+    # Clear rows after totals
+    for r in range(total_row + 1, ws.max_row + 1):
         for c in range(1, max_template_col + 1):
             cell = ws.cell(row=r, column=c)
             cell.value = None
-            cell.border = empty_border
+            cell.border = Border()
 
     # Print area
     ws.print_area = f"A1:AF{total_row}"
@@ -250,19 +240,12 @@ def convert():
     try:
         process_csv_to_excel(csv_path, out_path)
     except Exception as e:
-        flash(f"Error while processing file: {e}")
+        flash(str(e))
         return redirect(url_for("index"))
 
-    if not os.path.exists(out_path):
-        flash("Output file was not created. Please check template and CSV format.")
-        return redirect(url_for("index"))
-
-    try:
-        return send_file(out_path, as_attachment=True)
-    except Exception as e:
-        flash(f"Error sending file: {e}")
-        return redirect(url_for("index"))
+    return send_file(out_path, as_attachment=True)
 
 
 if __name__ == "__main__":
     app.run(debug=True)
+
