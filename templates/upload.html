@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Flight Log Formatter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+        }
+        h2 {
+            margin-bottom: 10px;
+        }
+        .messages {
+            color: red;
+            margin-bottom: 10px;
+        }
+        .box {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 6px;
+        }
+        button {
+            padding: 8px 16px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Flight Log Formatter</h2>
+    <p>Upload a CSV export and download the formatted Excel log.</p>
+
+    <div class="messages">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <ul>
+              {% for msg in messages %}
+                <li>{{ msg }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="box">
+        <form action="/convert" method="post" enctype="multipart/form-data">
+            <label>Select CSV file:</label><br><br>
+            <input type="file" name="file" accept=".csv"><br><br>
+            <button type="submit">Convert to formatted Excel</button>
+        </form>
+    </div>
+</body>
+</html>
